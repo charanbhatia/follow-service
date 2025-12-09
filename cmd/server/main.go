@@ -11,6 +11,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/pratilipi/follow-service/internal/database"
 	"github.com/pratilipi/follow-service/internal/handler"
+	"github.com/pratilipi/follow-service/internal/health"
+	"github.com/pratilipi/follow-service/internal/middleware"
 	"github.com/pratilipi/follow-service/internal/repository"
 	pb "github.com/pratilipi/follow-service/proto/follow"
 	"go.uber.org/zap"
@@ -48,6 +50,14 @@ func main() {
 	repo := repository.New(db)
 	followService := handler.NewFollowServiceServer(repo, logger)
 
+	healthChecker := health.NewHealthChecker(db, logger)
+	go func() {
+		healthPort := getEnv("HEALTH_PORT", "8080")
+		if err := healthChecker.StartHealthServer(healthPort); err != nil {
+			logger.Fatal("failed to start health server", zap.Error(err))
+		}
+	}()
+
 	port := getEnv("GRPC_PORT", "50051")
 	
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
@@ -55,7 +65,12 @@ func main() {
 		logger.Fatal("failed to listen", zap.Error(err))
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middleware.RecoveryInterceptor(logger),
+			middleware.LoggingInterceptor(logger),
+		),
+	)
 	pb.RegisterFollowServiceServer(grpcServer, followService)
 	reflection.Register(grpcServer)
 
