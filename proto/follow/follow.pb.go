@@ -646,12 +646,14 @@ func (x *ListUsersResponse) GetTotal() int32 {
 }
 
 type User struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
-	Username      string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             int32                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username       string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Email          string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	FollowersCount int32                  `protobuf:"varint,4,opt,name=followers_count,json=followersCount,proto3" json:"followers_count,omitempty"`
+	FollowingCount int32                  `protobuf:"varint,5,opt,name=following_count,json=followingCount,proto3" json:"following_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -705,6 +707,20 @@ func (x *User) GetEmail() string {
 	return ""
 }
 
+func (x *User) GetFollowersCount() int32 {
+	if x != nil {
+		return x.FollowersCount
+	}
+	return 0
+}
+
+func (x *User) GetFollowingCount() int32 {
+	if x != nil {
+		return x.FollowingCount
+	}
+	return 0
+}
+
 var File_proto_follow_follow_proto protoreflect.FileDescriptor
 
 const file_proto_follow_follow_proto_rawDesc = "" +
@@ -747,11 +763,13 @@ const file_proto_follow_follow_proto_rawDesc = "" +
 	"\x06offset\x18\x02 \x01(\x05R\x06offset\"M\n" +
 	"\x11ListUsersResponse\x12\"\n" +
 	"\x05users\x18\x01 \x03(\v2\f.follow.UserR\x05users\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"H\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"\x9a\x01\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
-	"\x05email\x18\x03 \x01(\tR\x05email2\x9b\x03\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12'\n" +
+	"\x0ffollowers_count\x18\x04 \x01(\x05R\x0efollowersCount\x12'\n" +
+	"\x0ffollowing_count\x18\x05 \x01(\x05R\x0efollowingCount2\x9b\x03\n" +
 	"\rFollowService\x127\n" +
 	"\x06Follow\x12\x15.follow.FollowRequest\x1a\x16.follow.FollowResponse\x12=\n" +
 	"\bUnfollow\x12\x17.follow.UnfollowRequest\x1a\x18.follow.UnfollowResponse\x12I\n" +

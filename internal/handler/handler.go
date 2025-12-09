@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	pb "github.com/pratilipi/follow-service/proto/follow"
+	"github.com/pratilipi/follow-service/internal/models"
 	"github.com/pratilipi/follow-service/internal/repository"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -88,11 +89,7 @@ func (s *FollowServiceServer) GetFollowers(ctx context.Context, req *pb.GetFollo
 
 	pbUsers := make([]*pb.User, len(users))
 	for i, user := range users {
-		pbUsers[i] = &pb.User{
-			Id:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		}
+		pbUsers[i] = userToProto(user)
 	}
 
 	return &pb.GetFollowersResponse{
@@ -123,11 +120,7 @@ func (s *FollowServiceServer) GetFollowing(ctx context.Context, req *pb.GetFollo
 
 	pbUsers := make([]*pb.User, len(users))
 	for i, user := range users {
-		pbUsers[i] = &pb.User{
-			Id:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		}
+		pbUsers[i] = userToProto(user)
 	}
 
 	return &pb.GetFollowingResponse{
@@ -147,11 +140,7 @@ func (s *FollowServiceServer) GetUser(ctx context.Context, req *pb.GetUserReques
 	}
 
 	return &pb.GetUserResponse{
-		User: &pb.User{
-			Id:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		},
+		User: userToProto(user),
 	}, nil
 }
 
@@ -173,11 +162,7 @@ func (s *FollowServiceServer) ListUsers(ctx context.Context, req *pb.ListUsersRe
 
 	pbUsers := make([]*pb.User, len(users))
 	for i, user := range users {
-		pbUsers[i] = &pb.User{
-			Id:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		}
+		pbUsers[i] = userToProto(user)
 	}
 
 	return &pb.ListUsersResponse{
@@ -198,5 +183,15 @@ func mapError(err error) error {
 		return status.Error(codes.InvalidArgument, "cannot follow yourself")
 	default:
 		return status.Error(codes.Internal, "internal server error")
+	}
+}
+
+func userToProto(user *models.User) *pb.User {
+	return &pb.User{
+		Id:             user.ID,
+		Username:       user.Username,
+		Email:          user.Email,
+		FollowersCount: user.FollowersCount,
+		FollowingCount: user.FollowingCount,
 	}
 }

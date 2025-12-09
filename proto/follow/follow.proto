@@ -77,4 +77,6 @@ message User {
   int32 id = 1;
   string username = 2;
   string email = 3;
+  int32 followers_count = 4;
+  int32 following_count = 5;
 }
