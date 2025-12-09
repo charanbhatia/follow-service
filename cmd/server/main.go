@@ -9,8 +9,13 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"github.com/pratilipi/follow-service/internal/database"
+	"github.com/pratilipi/follow-service/internal/handler"
+	"github.com/pratilipi/follow-service/internal/repository"
+	pb "github.com/pratilipi/follow-service/proto/follow"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 func main() {
@@ -24,6 +29,25 @@ func main() {
 	}
 	defer logger.Sync()
 
+	databaseURL := getEnv("DATABASE_URL", "")
+	if databaseURL == "" {
+		logger.Fatal("DATABASE_URL is required")
+	}
+
+	db, err := database.NewConnection(databaseURL)
+	if err != nil {
+		logger.Fatal("failed to connect to database", zap.Error(err))
+	}
+	defer db.Close()
+
+	if err := database.RunMigrations(db); err != nil {
+		logger.Fatal("failed to run migrations", zap.Error(err))
+	}
+	logger.Info("database migrations completed successfully")
+
+	repo := repository.New(db)
+	followService := handler.NewFollowServiceServer(repo, logger)
+
 	port := getEnv("GRPC_PORT", "50051")
 	
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
@@ -32,6 +56,8 @@ func main() {
 	}
 
 	grpcServer := grpc.NewServer()
+	pb.RegisterFollowServiceServer(grpcServer, followService)
+	reflection.Register(grpcServer)
 
 	logger.Info("starting gRPC server", zap.String("port", port))
 
