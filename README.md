@@ -1,13 +1,22 @@
 # Follow Service
 
-A production-ready gRPC microservice for managing user follow/unfollow relationships.
+A production-ready gRPC microservice for managing user follow/unfollow relationships. Part of a distributed microservices architecture deployed on AWS.
+
+## Live Deployment
+
+**Production Environment:**
+- GraphQL API: http://13.232.23.156:8080
+- Follow Service: Private subnet (10.0.1.124:50051)
+- Database: AWS RDS PostgreSQL 16.6
+- Region: Asia Pacific (Mumbai) - ap-south-1
 
 ## Stack
 
 - Go 1.22
-- PostgreSQL 16
+- PostgreSQL 16.6 (AWS RDS)
 - gRPC with Protocol Buffers
-- Docker
+- Docker (deployed on Amazon Linux 2023)
+- AWS EC2 (t3.micro)
 
 ## Features
 
@@ -30,54 +39,63 @@ A production-ready gRPC microservice for managing user follow/unfollow relations
 ## Database Schema
 
 ```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE follows (
-    follower_id INTEGER NOT NULL,
-    following_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (follower_id, following_id),
-    FOREIGN KEY (follower_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (following_id) REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT no_self_follow CHECK (follower_id != following_id)
+    follower_id VARCHAR(255) NOT NULL,
+    following_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (follower_id, following_id)
 );
 
-CREATE INDEX idx_follows_follower ON follows(follower_id);
-CREATE INDEX idx_follows_following ON follows(following_id);
+CREATE INDEX idx_follows_following_id ON follows(following_id);
+CREATE INDEX idx_follows_follower_id ON follows(follower_id);
 ```
 
 **Design Decisions:**
-- Composite primary key prevents duplicate follows
-- Two indexes optimize both "followers" and "following" queries
-- CHECK constraint prevents self-following at database level
-- CASCADE delete maintains referential integrity
+- Composite primary key prevents duplicate follows (O(1) lookup)
+- Two B-tree indexes optimize both "followers" and "following" queries (O(log n))
+- Self-follow prevention enforced at application layer
+- VARCHAR IDs support flexible user identification schemes
+- No foreign key constraints for decoupled microservices architecture
 
 ## Quick Start
 
+### Local Development
+
 ```bash
-# Clone and start
+# Clone repository
 git clone https://github.com/charanbhatia/follow-service.git
 cd follow-service
-docker-compose up -d
 
-# Health check
-curl http://localhost:8080/health/ready
+# Set environment variables
+export DATABASE_URL="postgres://user:pass@localhost:5432/followdb?sslmode=disable"
+
+# Run locally
+go run cmd/server/main.go
+
+# Or with Docker
+docker build -t follow-service .
+docker run -p 50051:50051 -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@host:5432/followdb?sslmode=require" \
+  follow-service
+```
+
+### Production Deployment
+
+```bash
+# Build and push to AWS ECR
+docker build -t follow-service:latest .
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 723402273260.dkr.ecr.ap-south-1.amazonaws.com
+docker tag follow-service:latest 723402273260.dkr.ecr.ap-south-1.amazonaws.com/follow-service:latest
+docker push 723402273260.dkr.ecr.ap-south-1.amazonaws.com/follow-service:latest
 ```
 
 **Endpoints:**
-- gRPC: `localhost:50051`
-- Health: `localhost:8080/health/ready`
+- gRPC: Port 50051
+- Health: Port 8080
 
-**Environment:**
-```
-DATABASE_URL=postgres://user:pass@host:5432/dbname?sslmode=disable
-GRPC_PORT=50051
-HEALTH_PORT=8080
+**Environment Variables:**
+```bash
+DATABASE_URL=postgres://user:pass@host:5432/dbname?sslmode=require
 ```
 
 ## API Reference
@@ -88,10 +106,11 @@ HEALTH_PORT=8080
 service FollowService {
   rpc Follow(FollowRequest) returns (FollowResponse);
   rpc Unfollow(UnfollowRequest) returns (UnfollowResponse);
+  rpc IsFollowing(IsFollowingRequest) returns (IsFollowingResponse);
   rpc GetFollowers(GetFollowersRequest) returns (GetFollowersResponse);
   rpc GetFollowing(GetFollowingRequest) returns (GetFollowingResponse);
-  rpc GetUser(GetUserRequest) returns (GetUserResponse);
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc GetFollowerCount(GetFollowerCountRequest) returns (GetFollowerCountResponse);
+  rpc GetFollowingCount(GetFollowingCountRequest) returns (GetFollowingCountResponse);
 }
 ```
 
